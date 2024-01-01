@@ -40,7 +40,7 @@ RUN apt-get install -y \
 
 # build riscv-gnu-toolchain
 RUN git clone -b rvv-0.9.x-for-book --single-branch https://github.com/chadyuu/riscv-gnu-toolchain.git
-RUN	cd riscv-gnu-toolchain && git submodule update --init --recursive riscv-binutils
+RUN	cd riscv-gnu-toolchain && git submodule update --init --recursive --depth=1 riscv-binutils
 RUN	cd riscv-gnu-toolchain && git submodule update --init --recursive --depth=1 riscv-gcc
 RUN	cd riscv-gnu-toolchain && git submodule update --init --recursive riscv-newlib
 RUN	cd riscv-gnu-toolchain && git submodule update --init --recursive --depth=1 riscv-gdb
