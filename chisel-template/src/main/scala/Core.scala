@@ -25,4 +25,9 @@ class Core extends Module {
   val inst = io.imem.inst
 
   io.exit := (inst === 0x34333231.U(WORD_LEN.W))
+
+  // debug signals
+  printf(p"pc_reg : 0x${Hexadecimal(pc_reg)}\n")
+  printf(p"inst   : 0x${Hexadecimal(inst)}\n")
+  printf("----------------\n")
 }

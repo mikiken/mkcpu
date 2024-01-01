@@ -127,7 +127,7 @@ local.properties
 *.app
 *.i*86
 *.x86_64
-*.hex
+# *.hex
 
 # Debug files
 *.dSYM/
@@ -347,4 +347,8 @@ metals.sbt
 
 # VS Code
 .vscode/
+.devcontainer/
 .scalafmt.conf
+
+# tests
+chisel-template/test_run_dir/
