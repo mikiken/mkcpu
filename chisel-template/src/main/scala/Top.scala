@@ -14,6 +14,7 @@ class Top extends Module {
   // core.io and memory.io are paired,
   // so they are connected with <> at once
   core.io.imem <> memory.io.imem
+  core.io.dmem <> memory.io.dmem
 
   io.exit := core.io.exit
 
