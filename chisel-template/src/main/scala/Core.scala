@@ -46,7 +46,13 @@ class Core extends Module {
       (inst === LW || inst === ADDI) -> (rs1_data + imm_i_sext),
       (inst === SW) -> (rs1_data + imm_s_sext),
       (inst === ADD) -> (rs1_data + rs2_data),
-      (inst === SUB) -> (rs1_data - rs2_data)
+      (inst === SUB) -> (rs1_data - rs2_data),
+      (inst === AND) -> (rs1_data & rs2_data),
+      (inst === OR) -> (rs1_data | rs2_data),
+      (inst === XOR) -> (rs1_data ^ rs2_data),
+      (inst === ANDI) -> (rs1_data & imm_i_sext),
+      (inst === ORI) -> (rs1_data | imm_i_sext),
+      (inst === XORI) -> (rs1_data ^ imm_i_sext)
     )
   )
 
@@ -62,7 +68,18 @@ class Core extends Module {
       (inst === LW) -> io.dmem.rdata
     )
   )
-  when(inst === LW || inst === ADDI || inst === ADD || inst === SUB) {
+  when(
+    inst === LW
+      || inst === ADD
+      || inst === ADDI
+      || inst === SUB
+      || inst === AND
+      || inst === OR
+      || inst === XOR
+      || inst === ANDI
+      || inst === ORI
+      || inst === XORI
+  ) {
     regfile(wb_addr) := wb_data
   }
 
