@@ -16,11 +16,21 @@ class Core extends Module {
   // registers (32bit width, 32 registers)
   val regfile = Mem(32, UInt(WORD_LEN.W))
 
-  // program counter
-  // count up by 4 for each cycle
-  // START_ADDR = 0
+  // instruction fetch stage
+  // program counter is incremented by 4 for each cycle
   val pc_reg = RegInit(START_ADDR)
-  pc_reg := pc_reg + 4.U(WORD_LEN.W)
+  val pc_plus4 = pc_reg + 4.U(WORD_LEN.W)
+
+  val br_flg = Wire(Bool())
+  val br_target = Wire(UInt(WORD_LEN.W))
+
+  val pc_next = MuxCase(
+    pc_plus4,
+    Seq(
+      (br_flg === true.B) -> br_target
+    )
+  )
+  pc_reg := pc_next
 
   // connect pc to imem.addr and inst to imem.inst
   io.imem.addr := pc_reg
@@ -38,6 +48,9 @@ class Core extends Module {
 
   val imm_s = Cat(inst(31, 25), inst(11, 7)) // immedeate value for S-type instruction
   val imm_s_sext = Cat(Fill(20, imm_s(11)), imm_s) // sign extension of imm_s
+
+  val imm_b = Cat(inst(31), inst(7), inst(30, 25), inst(11, 8)) // immedeate value for B-type instruction
+  val imm_b_sext = Cat(Fill(19, imm_b(11)), imm_b, 0.U(1.U)) // sign extension of imm_b
 
   val csignals = ListLookup(
     inst,
@@ -63,7 +76,13 @@ class Core extends Module {
       SLT -> List(ALU_SLT, OP1_RS1, OP2_RS2, MEN_X, REN_S, WB_ALU),
       SLTU -> List(ALU_SLTU, OP1_RS1, OP2_RS2, MEN_X, REN_S, WB_ALU),
       SLTI -> List(ALU_SLT, OP1_RS1, OP2_IMI, MEN_X, REN_S, WB_ALU),
-      SLTIU -> List(ALU_SLTU, OP1_RS1, OP2_IMI, MEN_X, REN_S, WB_ALU)
+      SLTIU -> List(ALU_SLTU, OP1_RS1, OP2_IMI, MEN_X, REN_S, WB_ALU),
+      BEQ -> List(BR_BEQ, OP1_RS1, OP2_RS2, MEN_X, REN_X, WB_X),
+      BNE -> List(BR_BNE, OP1_RS1, OP2_RS2, MEN_X, REN_X, WB_X),
+      BGE -> List(BR_BLT, OP1_RS1, OP2_RS2, MEN_X, REN_X, WB_X),
+      BGEU -> List(BR_BGE, OP1_RS1, OP2_RS2, MEN_X, REN_X, WB_X),
+      BLT -> List(BR_BLTU, OP1_RS1, OP2_RS2, MEN_X, REN_X, WB_X),
+      BLTU -> List(BR_BGEU, OP1_RS1, OP2_RS2, MEN_X, REN_X, WB_X)
     )
   )
   val exe_fun :: op1_sel :: op2_sel :: mem_wen :: rf_wen :: wb_sel :: Nil = csignals
@@ -100,6 +119,19 @@ class Core extends Module {
       (exe_fun === ALU_SLTU) -> (op1_data < op2_data).asUInt() // unsigned
     )
   )
+
+  br_flg := MuxCase(
+    false.B,
+    Seq(
+      (exe_fun === BR_BEQ) -> (op1_data === op2_data),
+      (exe_fun === BR_BNE) -> !(op1_data === op2_data),
+      (exe_fun === BR_BLT) -> (op1_data.asSInt() < op2_data.asSInt()),
+      (exe_fun === BR_BGE) -> !(op1_data.asSInt() < op2_data.asSInt()),
+      (exe_fun === BR_BLTU) -> (op1_data < op2_data),
+      (exe_fun === BR_BGEU) -> !(op1_data < op2_data)
+    )
+  )
+  br_target := pc_reg + imm_b_sext
 
   // memory access stage
   io.dmem.addr := alu_out
