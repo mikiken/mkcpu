@@ -32,7 +32,8 @@ class Core extends Module {
     pc_plus4,
     Seq(
       (br_flg === true.B) -> br_target,
-      (jmp_flg === true.B) -> alu_out
+      (jmp_flg === true.B) -> alu_out,
+      (inst === ECALL) -> csr_regfile(0x305) // set pc to the trap vector address (stored in mtvec : 0x305)
     )
   )
   pc_reg := pc_next
@@ -47,7 +48,6 @@ class Core extends Module {
   val wb_addr = inst(11, 7)
   val rs1_data = Mux(rs1_addr =/= 0.U(WORD_LEN.W), regfile(rs1_addr), 0.U(WORD_LEN.W))
   val rs2_data = Mux(rs2_addr =/= 0.U(WORD_LEN.W), regfile(rs2_addr), 0.U(WORD_LEN.W))
-  val csr_addr = inst(31, 20)
 
   val imm_i = inst(31, 20) // immedeate value for I-type instruction
   val imm_i_sext = Cat(Fill(20, imm_i(11)), imm_i) // sign extension of imm_i
@@ -107,7 +107,8 @@ class Core extends Module {
       CSRRS -> List(ALU_COPY1, OP1_RS1, OP2_X, MEN_X, REN_S, WB_CSR, CSR_S),
       CSRRSI -> List(ALU_COPY1, OP1_IMZ, OP2_X, MEN_X, REN_S, WB_CSR, CSR_S),
       CSRRC -> List(ALU_COPY1, OP1_RS1, OP2_X, MEN_X, REN_S, WB_CSR, CSR_C),
-      CSRRCI -> List(ALU_COPY1, OP1_IMZ, OP2_X, MEN_X, REN_S, WB_CSR, CSR_C)
+      CSRRCI -> List(ALU_COPY1, OP1_IMZ, OP2_X, MEN_X, REN_S, WB_CSR, CSR_C),
+      ECALL -> List(ALU_X, OP1_X, OP2_X, MEN_X, REN_X, WB_X, CSR_E)
     )
   )
   val exe_fun :: op1_sel :: op2_sel :: mem_wen :: rf_wen :: wb_sel :: csr_cmd :: Nil = csignals
@@ -168,6 +169,8 @@ class Core extends Module {
   io.dmem.wen := mem_wen
   io.dmem.wdata := rs2_data
 
+  val csr_addr = Mux(csr_cmd === CSR_E, 0x342.U(CSR_ADDR_LEN.W), inst(31, 20)) // 0x342 : mcause register address
+
   // read csr
   val csr_rdata = csr_regfile(csr_addr)
 
@@ -177,7 +180,8 @@ class Core extends Module {
     Seq(
       (csr_cmd === CSR_W) -> op1_data, // write
       (csr_cmd === CSR_S) -> (csr_rdata | op1_data), // set
-      (csr_cmd === CSR_C) -> (csr_rdata & ~op1_data) // clear
+      (csr_cmd === CSR_C) -> (csr_rdata & ~op1_data), // clear
+      (csr_cmd === CSR_E) -> 11.U(WORD_LEN.W) // ecall from machine mode
     )
   )
   when(csr_cmd > 0.U) {
