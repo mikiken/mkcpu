@@ -351,4 +351,4 @@ metals.sbt
 .scalafmt.conf
 
 # tests
-chisel-template/test_run_dir/
+test_run_dir/
