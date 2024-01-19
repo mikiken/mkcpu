@@ -23,6 +23,9 @@ class Core extends Module {
   val pc_reg = RegInit(START_ADDR)
   val pc_plus4 = pc_reg + 4.U(WORD_LEN.W)
 
+  // connect pc to imem.addr and inst to imem.inst
+  io.imem.addr := pc_reg
+  val inst = io.imem.inst
   val br_flg = Wire(Bool())
   val br_target = Wire(UInt(WORD_LEN.W))
   val jmp_flg = (inst === JAL || inst === JALR)
@@ -37,10 +40,6 @@ class Core extends Module {
     )
   )
   pc_reg := pc_next
-
-  // connect pc to imem.addr and inst to imem.inst
-  io.imem.addr := pc_reg
-  val inst = io.imem.inst
 
   // instruction decode stage
   val rs1_addr = inst(19, 15)
