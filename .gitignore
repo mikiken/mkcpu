@@ -352,3 +352,4 @@ metals.sbt
 
 # tests
 test_run_dir/
+results/
