@@ -27,7 +27,7 @@ class Memory extends Module {
   val mem = Mem(16384, UInt(8.W))
 
   // load program from file
-  loadMemoryFromFile(mem, "src/riscv/rv32mi-p-scall.hex")
+  loadMemoryFromFile(mem, "src/riscv/rv32{isa}-p-{inst}.hex")
 
   // one instruction is accessed four addresses of memory
   io.imem.inst := Cat(
