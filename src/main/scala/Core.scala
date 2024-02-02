@@ -201,7 +201,7 @@ class Core extends Module {
   }
 
   io.gp := regfile(3)
-  io.exit := (pc_reg === 0x44.U(WORD_LEN.W))
+  io.exit := (inst === UNIMP)
 
   // debug signals
   printf(p"pc_reg     : 0x${Hexadecimal(pc_reg)}\n")
