@@ -8,20 +8,21 @@ RESULT_DIR=$WORK_DIR/results
 mkdir -p $RESULT_DIR
 cd $WORK_DIR
 
-function loop_test(){
+function test_all_insts(){
     INSTS=${!1}
     PACKAGE_NAME=$2
     ISA=$3
-    sed -e "s/{package}/$PACKAGE_NAME/" $WORK_DIR/src/test/resources/RiscvTests.scala > $WORK_DIR/src/test/scala/RiscvTests.scala
     
     for INST in ${INSTS[@]}
     do
-        echo $INST
-        sed -e "s/{package}/$PACKAGE_NAME/" -e "s/{isa}/$ISA/" -e "s/{inst}/$INST/" $WORK_DIR/src/main/resources/Memory.scala > $WORK_DIR/src/main/scala/Memory.scala
+        echo "Running test for \"$INST\" instruction..."
+        sed -e "s/{isa}/$ISA/" -e "s/{inst}/$INST/" $WORK_DIR/src/test/scala/TestTemplate > $WORK_DIR/src/test/scala/TestTemp.scala
         sbt "testOnly $PACKAGE_NAME.RiscvTest" > $RESULT_DIR/$INST.txt
+        rm -f $WORK_DIR/src/test/scala/TestTemp.scala
+        echo "Done test for \"$INST\" instruction."
     done
 }
 
-PACKAGE_NAME=$1
-loop_test UI_INSTS[@] $PACKAGE_NAME "ui"
-loop_test MI_INSTS[@] $PACKAGE_NAME "mi"
+PACKAGE_NAME=cpu
+test_all_insts UI_INSTS[@] $PACKAGE_NAME ui
+test_all_insts MI_INSTS[@] $PACKAGE_NAME mi

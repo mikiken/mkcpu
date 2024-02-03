@@ -17,7 +17,7 @@ class DmemPortIo extends Bundle {
   val wdata = Input(UInt(WORD_LEN.W))
 }
 
-class Memory extends Module {
+class Memory(file: String) extends Module {
   val io = IO(new Bundle {
     val imem = new ImemPortIo()
     val dmem = new DmemPortIo()
@@ -27,7 +27,7 @@ class Memory extends Module {
   val mem = Mem(16384, UInt(8.W))
 
   // load program from file
-  loadMemoryFromFile(mem, "src/hex/ctest.hex")
+  loadMemoryFromFile(mem, file)
 
   // one instruction is accessed four addresses of memory
   io.imem.inst := Cat(
