@@ -53,6 +53,7 @@ class Core extends Module {
   val mem_reg_csr_cmd = RegInit(0.U(CSR_LEN.W))
   val mem_reg_imm_z_uext = RegInit(0.U(WORD_LEN.W))
   val mem_reg_alu_out = RegInit(0.U(WORD_LEN.W))
+  val mem_wb_data = Wire(UInt(WORD_LEN.W))
 
   // MEM/WB Stage
   val wb_reg_wb_addr = RegInit(0.U(ADDR_LEN.W))
@@ -64,6 +65,7 @@ class Core extends Module {
   val if_reg_pc = RegInit(START_ADDR)
   io.imem.addr := if_reg_pc
   val if_inst = io.imem.inst
+  val stall_flg = Wire(Bool())
 
   val exe_br_flg = Wire(Bool())
   val exe_br_target = Wire(UInt(WORD_LEN.W))
@@ -76,23 +78,56 @@ class Core extends Module {
     Seq(
       exe_br_flg -> exe_br_target,
       exe_jmp_flg -> exe_alu_out,
-      (if_inst === ECALL) -> csr_regfile(0x305) // set pc to the trap vector address (stored in mtvec : 0x305)
+      (if_inst === ECALL) -> csr_regfile(0x305), // set pc to the trap vector address (stored in mtvec : 0x305)
+      stall_flg -> if_reg_pc
     )
   )
   if_reg_pc := if_pc_next
 
   /// set signals to the next stage
-  id_reg_pc := if_reg_pc
-  id_reg_inst := Mux((exe_br_flg || exe_jmp_flg), BUBBLE, if_inst)
+  id_reg_pc := Mux(stall_flg, id_reg_pc, if_reg_pc)
+  id_reg_inst := MuxCase(
+    if_inst,
+    Seq(
+      (exe_br_flg || exe_jmp_flg) -> BUBBLE,
+      stall_flg -> id_reg_inst
+    )
+  )
 
   // instruction decode stage
-  val id_inst = Mux((exe_br_flg || exe_jmp_flg), BUBBLE, id_reg_inst)
+  val id_inst = Mux((exe_br_flg || exe_jmp_flg || stall_flg), BUBBLE, id_reg_inst)
 
   val id_rs1_addr = id_inst(19, 15)
   val id_rs2_addr = id_inst(24, 20)
+  val id_rs1_addr_b = id_reg_inst(19, 15)
+  val id_rs2_addr_b = id_reg_inst(24, 20)
   val id_wb_addr = id_inst(11, 7)
-  val id_rs1_data = Mux(id_rs1_addr =/= 0.U(WORD_LEN.W), regfile(id_rs1_addr), 0.U(WORD_LEN.W))
-  val id_rs2_data = Mux(id_rs2_addr =/= 0.U(WORD_LEN.W), regfile(id_rs2_addr), 0.U(WORD_LEN.W))
+  val id_rs1_data = MuxCase(
+    regfile(id_rs1_addr),
+    Seq(
+      (id_rs1_addr === 0.U) -> 0.U(WORD_LEN.W),
+      // foward data from MEM stage
+      ((id_rs1_addr === mem_reg_wb_addr) && (mem_reg_rf_wen === REN_S)) -> mem_wb_data,
+      // foward data from WB stage
+      ((id_rs1_addr === wb_reg_wb_addr) && (wb_reg_rf_wen === REN_S)) -> wb_reg_wb_data
+    )
+  )
+  val id_rs2_data = MuxCase(
+    regfile(id_rs2_addr),
+    Seq(
+      (id_rs2_addr === 0.U) -> 0.U(WORD_LEN.W),
+      // foward data from MEM stage
+      ((id_rs2_addr === mem_reg_wb_addr) && (mem_reg_rf_wen === REN_S)) -> mem_wb_data,
+      // foward data from WB stage
+      ((id_rs2_addr === wb_reg_wb_addr) && (wb_reg_rf_wen === REN_S)) -> wb_reg_wb_data
+    )
+  )
+  val id_rs1_data_data_hazard =
+    (exe_reg_rf_wen === REN_S) && (id_rs1_addr_b === exe_reg_wb_addr) && (id_rs1_addr_b =/= 0.U)
+  val id_rs2_data_data_hazard =
+    (exe_reg_rf_wen === REN_S) && (id_rs2_addr_b === exe_reg_wb_addr) && (id_rs2_addr_b =/= 0.U)
+
+  stall_flg := (id_rs1_data_data_hazard || id_rs2_data_data_hazard)
 
   val id_imm_i = id_inst(31, 20) // immedeate value for I-type instruction
   val id_imm_i_sext = Cat(Fill(20, id_imm_i(11)), id_imm_i) // sign extension of imm_i
@@ -278,7 +313,7 @@ class Core extends Module {
     csr_regfile(mem_reg_csr_addr) := csr_wdata
   }
 
-  val mem_wb_data = MuxCase(
+  mem_wb_data := MuxCase(
     mem_reg_alu_out,
     Seq(
       (mem_reg_wb_sel === WB_MEM) -> io.dmem.rdata,
@@ -298,7 +333,7 @@ class Core extends Module {
   }
 
   io.gp := regfile(3)
-  io.exit := (if_inst === UNIMP)
+  io.exit := (mem_reg_pc === 0x44.U(WORD_LEN.W))
 
   // debug signals
   printf(p"if_reg_pc        : 0x${Hexadecimal(if_reg_pc)}\n")
@@ -313,6 +348,7 @@ class Core extends Module {
   printf(p"mem_reg_pc       : 0x${Hexadecimal(mem_reg_pc)}\n")
   printf(p"mem_wb_data      : 0x${Hexadecimal(mem_wb_data)}\n")
   printf(p"wb_reg_wb_data   : 0x${Hexadecimal(wb_reg_wb_data)}\n")
+  printf(p"stall_flg        : $stall_flg\n")
   printf(p"gp               : ${regfile(3)}\n")
   printf(p"dmem.addr        : ${io.dmem.addr}\n")
   printf(p"dmem.wen         : ${io.dmem.wen}\n")
