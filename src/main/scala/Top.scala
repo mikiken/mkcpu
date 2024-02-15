@@ -15,10 +15,9 @@ class Top(file: String) extends Module {
 
   // core.io and memory.io are paired,
   // so they are connected with <> at once
-  core.io.imem <> memory.io.imem
-  core.io.dmem <> memory.io.dmem
+  core.io.core_inst_io <> memory.io.memory_inst_io
+  core.io.core_data_io <> memory.io.memory_data_io
 
   io.exit := core.io.exit
   io.gp := core.io.gp
-
 }

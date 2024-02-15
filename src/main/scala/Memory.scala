@@ -5,50 +5,50 @@ import chisel3.util._
 import chisel3.util.experimental.loadMemoryFromFile
 import common.Consts._
 
-class ImemPortIo extends Bundle {
+class InstMemoryIO extends Bundle {
   val addr = Input(UInt(WORD_LEN.W))
   val inst = Output(UInt(WORD_LEN.W))
 }
 
-class DmemPortIo extends Bundle {
+class DataMemoryIO extends Bundle {
   val addr = Input(UInt(WORD_LEN.W))
-  val rdata = Output(UInt(WORD_LEN.W))
-  val wen = Input(Bool()) // write enable
-  val wdata = Input(UInt(WORD_LEN.W))
+  val read_data = Output(UInt(WORD_LEN.W))
+  val write_enable = Input(Bool())
+  val write_data = Input(UInt(WORD_LEN.W))
 }
 
 class Memory(file: String) extends Module {
   val io = IO(new Bundle {
-    val imem = new ImemPortIo()
-    val dmem = new DmemPortIo()
+    val memory_inst_io = new InstMemoryIO()
+    val memory_data_io = new DataMemoryIO()
   })
 
   // memory entity (8bit width * 16384 = 16KB)
-  val mem = Mem(16384, UInt(8.W))
+  val memory = Mem(16384, UInt(8.W))
 
   // load program from file
-  loadMemoryFromFile(mem, file)
+  loadMemoryFromFile(memory, file)
 
   // one instruction is accessed four addresses of memory
-  io.imem.inst := Cat(
-    mem(io.imem.addr + 3.U(WORD_LEN.W)),
-    mem(io.imem.addr + 2.U(WORD_LEN.W)),
-    mem(io.imem.addr + 1.U(WORD_LEN.W)),
-    mem(io.imem.addr)
+  io.memory_inst_io.inst := Cat(
+    memory(io.memory_inst_io.addr + 3.U(WORD_LEN.W)),
+    memory(io.memory_inst_io.addr + 2.U(WORD_LEN.W)),
+    memory(io.memory_inst_io.addr + 1.U(WORD_LEN.W)),
+    memory(io.memory_inst_io.addr)
   )
 
-  io.dmem.rdata := Cat(
-    mem(io.dmem.addr + 3.U(WORD_LEN.W)),
-    mem(io.dmem.addr + 2.U(WORD_LEN.W)),
-    mem(io.dmem.addr + 1.U(WORD_LEN.W)),
-    mem(io.dmem.addr)
+  io.memory_data_io.read_data := Cat(
+    memory(io.memory_data_io.addr + 3.U(WORD_LEN.W)),
+    memory(io.memory_data_io.addr + 2.U(WORD_LEN.W)),
+    memory(io.memory_data_io.addr + 1.U(WORD_LEN.W)),
+    memory(io.memory_data_io.addr)
   )
 
   // store data to memory (`sw` instruction)
-  when(io.dmem.wen) {
-    mem(io.dmem.addr) := io.dmem.wdata(7, 0)
-    mem(io.dmem.addr + 1.U) := io.dmem.wdata(15, 8)
-    mem(io.dmem.addr + 2.U) := io.dmem.wdata(23, 16)
-    mem(io.dmem.addr + 3.U) := io.dmem.wdata(31, 24)
+  when(io.memory_data_io.write_enable) {
+    memory(io.memory_data_io.addr) := io.memory_data_io.write_data(7, 0)
+    memory(io.memory_data_io.addr + 1.U) := io.memory_data_io.write_data(15, 8)
+    memory(io.memory_data_io.addr + 2.U) := io.memory_data_io.write_data(23, 16)
+    memory(io.memory_data_io.addr + 3.U) := io.memory_data_io.write_data(31, 24)
   }
 }
