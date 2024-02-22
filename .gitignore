@@ -309,7 +309,7 @@ xcuserdata
 ### Scala template
 *.class
 *.log
-/.bsp
+.bsp
 
 # sbt specific
 .cache

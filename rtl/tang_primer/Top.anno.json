@@ -1,0 +1,23 @@
+[
+  {
+    "class": "firrtl.transforms.BlackBoxInlineAnno",
+    "target": "Top.Memory",
+    "name": "Top.Memory.memory.v",
+    "text": "module BindsTo_0_Memory(\n  input         clock,\n  input  [31:0] io_memory_inst_io_addr,\n  output [31:0] io_memory_inst_io_inst,\n  input  [31:0] io_memory_data_io_addr,\n  output [31:0] io_memory_data_io_read_data,\n  input         io_memory_data_io_write_enable,\n  input  [31:0] io_memory_data_io_write_data\n);\n\ninitial begin\n  $readmemh(\"src/riscv/rv32ui-p-add.hex\", Memory.memory);\nend\n                      endmodule\n\nbind Memory BindsTo_0_Memory BindsTo_0_Memory_Inst(.*);"
+  },
+  {
+    "class": "firrtl.EmitCircuitAnnotation",
+    "emitter": "firrtl.VerilogEmitter"
+  },
+  {
+    "class": "firrtl.annotations.LoadMemoryAnnotation",
+    "target": "Top.Memory.memory",
+    "fileName": "src/riscv/rv32ui-p-add.hex",
+    "hexOrBinary": "h",
+    "originalMemoryNameOpt": "memory"
+  },
+  {
+    "class": "firrtl.transforms.BlackBoxTargetDirAnno",
+    "targetDir": "rtl/tang_primer"
+  }
+]
